@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sword vs. Aliens</title>
+<style>
+  body { margin: 0; background: black; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; background: #111; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Player
+const player = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  size: 30,
+  speed: 5,
+  swordLength: 50,
+  swordSwing: false
+};
+
+// Aliens
+let aliens = [];
+let score = 0;
+let gameOver = false;
+
+function spawnAlien() {
+  const edge = Math.floor(Math.random() * 4); // 0=top,1=right,2=bottom,3=left
+  let x, y;
+  if (edge === 0) { x = Math.random() * canvas.width; y = -20; }
+  if (edge === 1) { x = canvas.width + 20; y = Math.random() * canvas.height; }
+  if (edge === 2) { x = Math.random() * canvas.width; y = canvas.height + 20; }
+  if (edge === 3) { x = -20; y = Math.random() * canvas.height; }
+  
+  aliens.push({ x, y, size: 20, speed: 2 });
+}
+
+function movePlayer(keys) {
+  if (keys['ArrowUp'] || keys['w']) player.y -= player.speed;
+  if (keys['ArrowDown'] || keys['s']) player.y += player.speed;
+  if (keys['ArrowLeft'] || keys['a']) player.x -= player.speed;
+  if (keys['ArrowRight'] || keys['d']) player.x += player.speed;
+}
+
+function moveAliens() {
+  aliens.forEach(a => {
+    const dx = player.x - a.x;
+    const dy = player.y - a.y;
+    const dist = Math.hypot(dx, dy);
+    a.x += (dx / dist) * a.speed;
+    a.y += (dy / dist) * a.speed;
+    
+    if (dist < player.size) {
+      gameOver = true;
+    }
+  });
+}
+
+function drawPlayer() {
+  ctx.fillStyle = 'cyan';
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+  ctx.fill();
+  
+  if (player.swordSwing) {
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+    ctx.lineTo(player.x + Math.cos(angle) * player.swordLength,
+               player.y + Math.sin(angle) * player.swordLength);
+    ctx.stroke();
+  }
+}
+
+function drawAliens() {
+  ctx.fillStyle = 'lime';
+  aliens.forEach(a => {
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, a.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function detectHits() {
+  if (!player.swordSwing) return;
+  const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+  const sx = player.x + Math.cos(angle) * player.swordLength;
+  const sy = player.y + Math.sin(angle) * player.swordLength;
+  
+  aliens = aliens.filter(a => {
+    const dist = Math.hypot(sx - a.x, sy - a.y);
+    if (dist < a.size) {
+      score++;
+      return false;
+    }
+    return true;
+  });
+}
+
+let keys = {};
+let mouseX = 0, mouseY = 0;
+document.addEventListener('keydown', e => keys[e.key] = true);
+document.addEventListener('keyup', e => keys[e.key] = false);
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+document.addEventListener('mousedown', () => {
+  player.swordSwing = true;
+  setTimeout(() => player.swordSwing = false, 150);
+});
+
+setInterval(spawnAlien, 1000);
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!gameOver) {
+    movePlayer(keys);
+    moveAliens();
+    detectHits();
+    drawPlayer();
+    drawAliens();
+    
+    ctx.fillStyle = 'white';
+    ctx.font = '20px Arial';
+    ctx.fillText("Score: " + score, 20, 30);
+  } else {
+    ctx.fillStyle = 'red';
+    ctx.font = '50px Arial';
+    ctx.fillText("GAME OVER", canvas.width/2 - 150, canvas.height/2);
+    ctx.font = '30px Arial';
+    ctx.fillText("Final Score: " + score, canvas.width/2 - 90, canvas.height/2 + 40);
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
+
